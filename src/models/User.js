@@ -29,10 +29,6 @@ const UserSchema = new mongoose.Schema(
       lowercase: true,
       trim:      true,
     },
-    passwordHash: {
-      type:    String,
-      default: null,
-    },
     firebaseUid: {
       type:   String,
       unique: true,

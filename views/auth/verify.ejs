@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify OTP - Box Cricket</title>
+  <link rel="stylesheet" href="/mobile/v1/auth/test/styles.css" />
+</head>
+<body>
+  <main class="shell compact">
+    <section class="panel">
+      <a class="back" href="/mobile/v1/auth/test">Back</a>
+      <h1>Verify OTP</h1>
+      <p class="muted">Use the OTP shown below for this browser test.</p>
+
+      <% if (message) { %><div class="notice"><%= message %></div><% } %>
+      <% if (error) { %><div class="error"><%= error %></div><% } %>
+
+      <% if (otp) { %>
+        <div class="otp"><%= otp %></div>
+      <% } %>
+
+      <form method="post" action="/mobile/v1/auth/test/verify-otp">
+        <label for="phone">Mobile Number</label>
+        <input
+          id="phone"
+          name="phone"
+          value="<%= phone || '' %>"
+          inputmode="numeric"
+          minlength="10"
+          maxlength="10"
+          pattern="[6-9][0-9]{9}"
+          title="Enter a 10-digit Indian mobile number"
+          required
+        />
+
+        <label for="otp">OTP</label>
+        <input
+          id="otp"
+          name="otp"
+          value="<%= otp || '' %>"
+          inputmode="numeric"
+          minlength="4"
+          maxlength="4"
+          pattern="[0-9]{4}"
+          title="Enter the 4-digit OTP"
+          required
+        />
+
+        <button type="submit">Verify And Login</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

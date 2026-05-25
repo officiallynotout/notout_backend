@@ -29,7 +29,9 @@ const validate = (schema, source = 'body') => (req, res, next) => {
     return next(new ApiError(400, MESSAGES.COMMON.VALIDATION_ERROR, errors))
   }
 
-  req[source] = value
+  if (source !== 'query') {
+    req[source] = value
+  }
   return next()
 }
 

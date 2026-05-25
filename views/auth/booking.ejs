@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Slot - Box Cricket</title>
+  <link rel="stylesheet" href="/mobile/v1/auth/test/styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="panel">
+      <h1>Book Slot</h1>
+      <p class="muted">This is a protected booking page. It works only after OTP login sets cookies.</p>
+
+      <% if (message) { %><div class="notice"><%= message %></div><% } %>
+      <% if (error) { %><div class="error"><%= error %></div><% } %>
+
+      <form method="post" action="/mobile/v1/auth/test/booking">
+        <label for="turfName">Turf Name</label>
+        <input id="turfName" name="turfName" value="Box Cricket Turf 1" required />
+
+        <label for="date">Date</label>
+        <input id="date" name="date" type="date" required />
+
+        <label for="startTime">Start Time</label>
+        <input id="startTime" name="startTime" type="time" value="18:00" required />
+
+        <label for="endTime">End Time</label>
+        <input id="endTime" name="endTime" type="time" value="19:00" required />
+
+        <button type="submit">Book Slot</button>
+      </form>
+
+      <% if (typeof booking !== 'undefined' && booking) { %>
+        <dl>
+          <dt>Booking ID</dt>
+          <dd><%= booking._id %></dd>
+          <dt>Turf</dt>
+          <dd><%= booking.turfName %></dd>
+          <dt>Date</dt>
+          <dd><%= booking.date %></dd>
+          <dt>Time</dt>
+          <dd><%= booking.startTime %> - <%= booking.endTime %></dd>
+          <dt>Status</dt>
+          <dd><%= booking.status %></dd>
+        </dl>
+      <% } %>
+
+      <div class="actions">
+        <form method="post" action="/mobile/v1/auth/test/logout">
+          <button class="danger" type="submit">Logout</button>
+        </form>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -36,6 +36,9 @@ module.exports = {
     INVALID_RANGE:     'startTime must be before endTime',
     NO_SLOTS:          'No slots could be generated for the given time range',
   },
+  BOOKING: {
+    CREATED: 'Booking created successfully',
+  },
   COMMON: {
     NOT_FOUND:        'Resource not found',
     ROUTE_NOT_FOUND:  'Route not found',
