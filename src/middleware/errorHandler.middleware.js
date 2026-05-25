@@ -3,6 +3,7 @@
 const ApiError       = require('../utils/ApiError')
 const MESSAGES       = require('../common/constants/messages.constant')
 const { errorDebug } = require('../utils/logger')
+const config         = require('../config/env')
 
 /**
  * Central error handler — must be registered LAST in app.js.
@@ -73,7 +74,7 @@ const errorHandler = (err, req, res, next) => {
   // 7. Default — unexpected server error
   return res.status(500).json({
     success: false,
-    message: MESSAGES.COMMON.SERVER_ERROR,
+    message: config.NODE_ENV === 'development' ? err.message : MESSAGES.COMMON.SERVER_ERROR,
     errors:  [],
   })
 }

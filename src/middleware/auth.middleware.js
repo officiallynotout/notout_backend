@@ -8,8 +8,8 @@ const User         = require('../models/User')
 const config       = require('../config/env')
 
 const authMiddleware = async (req, res, next) => {
-  // 1. Extract Bearer token
-  const token = req.headers.authorization?.split(' ')[1]
+  // 1. Extract Bearer token or HTTP-only cookie token
+  const token = req.headers.authorization?.split(' ')[1] || req.cookies.accessToken
 
   // 2. Require token presence
   if (!token) {
@@ -22,7 +22,7 @@ const authMiddleware = async (req, res, next) => {
 
   // 4. Load user (exclude sensitive fields)
   const user = await User.findById(decoded.userId).select(
-    '-passwordHash -otp -refreshToken'
+    '-otp -refreshToken'
   )
 
   // 5. User must still exist in DB
