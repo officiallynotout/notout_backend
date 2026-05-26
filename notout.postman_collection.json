@@ -1,0 +1,377 @@
+{
+  "info": {
+    "name": "NotOut — Box Cricket API",
+    "_postman_id": "notout-box-cricket-v1",
+    "description": "Full API collection for the NotOut box-cricket backend.\n\nSet the `baseUrl` variable to your server (default: http://localhost:3000).\nAfter login / verify-otp, copy the returned `accessToken` into the `accessToken` collection variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",     "value": "http://localhost:3000", "type": "string" },
+    { "key": "accessToken", "value": "",                      "type": "string" },
+    { "key": "refreshToken","value": "",                      "type": "string" },
+    { "key": "turfId",      "value": "",                      "type": "string" },
+    { "key": "slotId",      "value": "",                      "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "🔐 Auth",
+      "item": [
+
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["mobile","v1","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Divya Darshan\",\n  \"phone\": \"9876543210\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.data && r.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken',  r.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', r.data.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/auth/verify-otp", "host": ["{{baseUrl}}"], "path": ["mobile","v1","auth","verify-otp"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\",\n  \"otp\": \"1234\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Login (request OTP)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["mobile","v1","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Firebase Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.data && r.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken',  r.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', r.data.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/auth/firebase", "host": ["{{baseUrl}}"], "path": ["mobile","v1","auth","firebase"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firebaseToken\": \"<your-firebase-id-token>\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.data && r.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken',  r.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', r.data.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["mobile","v1","auth","refresh"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["mobile","v1","auth","logout"] },
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "🏟️ Turfs",
+      "item": [
+
+        {
+          "name": "Get All Turfs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/mobile/v1/turfs?city=Surat&isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["mobile","v1","turfs"],
+              "query": [
+                { "key": "city",     "value": "Surat",  "description": "Filter by city (case-insensitive regex)" },
+                { "key": "isActive", "value": "true",   "description": "true | false  (omit = defaults to true)" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Get Turf by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/mobile/v1/turfs/{{turfId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["mobile","v1","turfs","{{turfId}}"]
+            }
+          }
+        },
+
+        {
+          "name": "Create Turf  [admin]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.data && r.data._id) {",
+                  "  pm.collectionVariables.set('turfId', r.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/turfs", "host": ["{{baseUrl}}"], "path": ["mobile","v1","turfs"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dream11 Box Cricket Arena\",\n  \"description\": \"Premium indoor box cricket turf with floodlights\",\n  \"location\": {\n    \"address\": \"Ring Road, Adajan\",\n    \"city\": \"Surat\",\n    \"pincode\": \"395009\"\n  },\n  \"amenities\": [\"Parking\", \"Changing Room\", \"Floodlights\", \"Canteen\"],\n  \"pricePerHour\": 1200,\n  \"operatingHours\": {\n    \"open\": \"06:00\",\n    \"close\": \"23:00\"\n  }\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Update Turf  [admin]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/turfs/{{turfId}}", "host": ["{{baseUrl}}"], "path": ["mobile","v1","turfs","{{turfId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pricePerHour\": 1500,\n  \"description\": \"Updated — now with AstroTurf surface\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Delete (deactivate) Turf  [admin]",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/turfs/{{turfId}}", "host": ["{{baseUrl}}"], "path": ["mobile","v1","turfs","{{turfId}}"] }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "🕐 Slots",
+      "item": [
+
+        {
+          "name": "Get Slots for Turf + Date",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/mobile/v1/slots?turfId={{turfId}}&date=2026-05-25",
+              "host": ["{{baseUrl}}"],
+              "path": ["mobile","v1","slots"],
+              "query": [
+                { "key": "turfId", "value": "{{turfId}}", "description": "24-char MongoDB ObjectId" },
+                { "key": "date",   "value": "2026-05-25", "description": "YYYY-MM-DD" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Generate Slots  [admin]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.data) {",
+                  "  console.log('created:', r.data.created, '| skipped:', r.data.skipped, '| total:', r.data.total);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/slots/generate", "host": ["{{baseUrl}}"], "path": ["mobile","v1","slots","generate"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"turfId\": \"{{turfId}}\",\n  \"date\": \"2026-05-25\",\n  \"startTime\": \"06:00\",\n  \"endTime\": \"23:00\",\n  \"durationMinutes\": 60,\n  \"price\": 1200\n}"
+            },
+            "description": "durationMinutes: 30 | 60 | 90 | 120"
+          }
+        },
+
+        {
+          "name": "Lock Slot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.data && r.data._id) {",
+                  "  pm.collectionVariables.set('slotId', r.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/slots/lock", "host": ["{{baseUrl}}"], "path": ["mobile","v1","slots","lock"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{slotId}}\"\n}"
+            },
+            "description": "Locks the slot for 10 minutes. Automatically claims expired locks."
+          }
+        },
+
+        {
+          "name": "Release Slot (unlock)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mobile/v1/slots/lock/{{slotId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["mobile","v1","slots","lock","{{slotId}}"]
+            },
+            "description": "Can only be called by the user who locked the slot."
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "📋 Bookings",
+      "item": [
+
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/v1/bookings", "host": ["{{baseUrl}}"], "path": ["mobile","v1","bookings"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"turfName\": \"Dream11 Box Cricket Arena\",\n  \"date\": \"2026-05-25\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:00\"\n}"
+            }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "❤️ Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    }
+
+  ]
+}
