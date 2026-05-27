@@ -35,6 +35,7 @@ router.post('/firebase',   validate(firebaseAuthSchema), controller.firebaseLogi
 router.post('/refresh',    validate(refreshTokenSchema), controller.refreshToken)
 
 // Protected routes (require valid access token)
+router.get('/me', authMiddleware, controller.me)
 router.post('/logout', authMiddleware, controller.logout)
 
 module.exports = router

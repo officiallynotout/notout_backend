@@ -374,10 +374,18 @@ const testLogout = asyncHandler(async (req, res) => {
  * Authenticate via Firebase ID token.
  */
 const firebaseLogin = asyncHandler(async (req, res) => {
-  const result = await authService.firebaseLogin(req.body.firebaseToken)
+  const result = await authService.firebaseLogin(req.body.firebaseToken, req.body.name)
   setAuthCookies(res, result)
   return ApiResponse.success(res, result, MESSAGES.AUTH.LOGIN_SUCCESS)
 })
+
+/**
+ * GET /mobile/v1/auth/me
+ * Return the authenticated user's profile.
+ */
+const me = asyncHandler(async (req, res) =>
+  ApiResponse.success(res, authService.sanitizeUser(req.user))
+)
 
 /**
  * POST /mobile/v1/auth/refresh
@@ -421,6 +429,7 @@ module.exports = {
   testRefresh,
   testLogout,
   firebaseLogin,
+  me,
   refreshToken,
   logout,
 }

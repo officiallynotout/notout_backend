@@ -75,6 +75,13 @@ const _otpResponse = (otp) => ({
   ...(config.NODE_ENV === 'development' && { otp }),
 })
 
+const _toIndianMobile = (phone) => {
+  const digits = String(phone || '').replace(/\D/g, '')
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2)
+  if (digits.length === 10) return digits
+  return phone || null
+}
+
 // ---------------------------------------------------------------------------
 // Exported service functions
 // ---------------------------------------------------------------------------
@@ -161,9 +168,9 @@ const getOtpPreview = async (phone) => {
 
 /**
  * Authenticate via Firebase ID token.
- * Creates a new user record on first login.
+ * Creates or links a user record using Firebase's verified phone number.
  */
-const firebaseLogin = async (firebaseToken) => {
+const firebaseLogin = async (firebaseToken, name) => {
   let decoded
   try {
     decoded = await firebaseAdmin.auth().verifyIdToken(firebaseToken)
@@ -172,17 +179,36 @@ const firebaseLogin = async (firebaseToken) => {
   }
 
   const { uid, phone_number, email, name: fbName } = decoded
+  const phone = _toIndianMobile(phone_number)
+  if (!phone_number && !email) {
+    throw new ApiError(401, MESSAGES.AUTH.INVALID_FIREBASE)
+  }
 
   let user = await User.findOne({ firebaseUid: uid })
+  if (!user && phone) {
+    user = await User.findByPhone(phone)
+  }
+  if (!user && email) {
+    user = await User.findOne({ email })
+  }
 
   if (!user) {
     user = await User.create({
-      name:        fbName || 'User',
+      name:        name || fbName || 'User',
       firebaseUid: uid,
-      phone:       phone_number || null,
+      phone:       phone,
       email:       email || null,
       isVerified:  true,
     })
+  } else {
+    user.firebaseUid = user.firebaseUid || uid
+    user.isVerified  = true
+
+    if (name) user.name = name
+    if (email && !user.email) user.email = email
+    if (phone && !user.phone) user.phone = phone
+
+    await user.save()
   }
 
   const tokens = _generateTokens(user._id)
@@ -237,4 +263,5 @@ module.exports = {
   firebaseLogin,
   refreshAccessToken,
   logout,
+  sanitizeUser: _sanitizeUser,
 }

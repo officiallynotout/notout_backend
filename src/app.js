@@ -17,7 +17,19 @@ app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
 
 // ── CORS ────────────────────────────────────────────────────────────────────
-app.use(cors({ origin: config.CLIENT_URL, credentials: true }))
+const allowedOrigins = new Set([
+  config.CLIENT_URL,
+  'http://localhost:8081',
+  'http://127.0.0.1:8081',
+])
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true)
+    return callback(null, false)
+  },
+  credentials: true,
+}))
 
 // ── Request logging ─────────────────────────────────────────────────────────
 app.use(config.NODE_ENV === 'development' ? morgan('dev') : morgan('combined'))
