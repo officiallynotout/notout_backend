@@ -37,7 +37,14 @@ module.exports = {
     NO_SLOTS:          'No slots could be generated for the given time range',
   },
   BOOKING: {
-    CREATED: 'Booking created successfully',
+    CREATED:          'Booking created successfully',
+    NOT_FOUND:        'Booking not found',
+    CANCELLED:        'Booking cancelled successfully',
+    ALREADY_CANCELLED: 'Booking is already cancelled',
+    CANNOT_CANCEL:    'Cannot cancel a past booking',
+  },
+  USER: {
+    UPDATED: 'Profile updated successfully',
   },
   COMMON: {
     NOT_FOUND:        'Resource not found',

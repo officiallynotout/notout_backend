@@ -1,6 +1,6 @@
 'use strict'
 
-const Booking = require('../models/Booking')
+const Booking  = require('../models/Booking')
 const ApiError = require('../utils/ApiError')
 const MESSAGES = require('../common/constants/messages.constant')
 const { isFutureOrToday } = require('../common/helpers/date.helper')
@@ -24,4 +24,33 @@ const createBooking = async (userId, payload) => {
   })
 }
 
-module.exports = { createBooking }
+const getMyBookings = async (userId) => {
+  return Booking.find({ user: userId })
+    .select('-__v')
+    .sort({ date: -1, startTime: -1 })
+}
+
+const getBookingById = async (bookingId, userId) => {
+  const booking = await Booking.findOne({ _id: bookingId, user: userId }).select('-__v')
+  if (!booking) throw new ApiError(404, MESSAGES.BOOKING.NOT_FOUND)
+  return booking
+}
+
+const cancelBooking = async (bookingId, userId) => {
+  const booking = await Booking.findOne({ _id: bookingId, user: userId })
+  if (!booking) throw new ApiError(404, MESSAGES.BOOKING.NOT_FOUND)
+
+  if (booking.status === 'cancelled') {
+    throw new ApiError(400, MESSAGES.BOOKING.ALREADY_CANCELLED)
+  }
+
+  if (!isFutureOrToday(booking.date)) {
+    throw new ApiError(400, MESSAGES.BOOKING.CANNOT_CANCEL)
+  }
+
+  booking.status = 'cancelled'
+  await booking.save()
+  return booking
+}
+
+module.exports = { createBooking, getMyBookings, getBookingById, cancelBooking }

@@ -3,6 +3,7 @@
 const router = require('express').Router()
 
 router.use('/auth', require('./auth/auth.routes'))
+router.use('/users', require('./users/user.routes'))
 router.use('/bookings', require('./bookings/booking.routes'))
 
 // Future modules: uncomment as they are built.
