@@ -23,6 +23,7 @@ const otpPreviewSchema = Joi.object({
 
 const firebaseAuthSchema = Joi.object({
   firebaseToken: Joi.string().required(),
+  name:          Joi.string().trim().min(2).max(50).optional(),
 })
 
 const refreshTokenSchema = Joi.object({
