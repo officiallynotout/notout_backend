@@ -1,6 +1,7 @@
 'use strict'
 
 const Booking  = require('../models/Booking')
+const Turf     = require('../models/Turf')
 const ApiError = require('../utils/ApiError')
 const MESSAGES = require('../common/constants/messages.constant')
 const { isFutureOrToday } = require('../common/helpers/date.helper')
@@ -53,4 +54,24 @@ const cancelBooking = async (bookingId, userId) => {
   return booking
 }
 
-module.exports = { createBooking, getMyBookings, getBookingById, cancelBooking }
+const getAllBookings = async () => {
+  return Booking.find({})
+    .populate('user', 'name phone')
+    .select('-__v')
+    .sort({ date: -1, startTime: -1 })
+}
+
+const getAdminStats = async () => {
+  const today = new Date().toISOString().slice(0, 10)
+  const [total, confirmed, cancelled, pending, todayCount, activeTurfs] = await Promise.all([
+    Booking.countDocuments({}),
+    Booking.countDocuments({ status: 'confirmed' }),
+    Booking.countDocuments({ status: 'cancelled' }),
+    Booking.countDocuments({ status: 'pending' }),
+    Booking.countDocuments({ date: today }),
+    Turf.countDocuments({ isActive: true }),
+  ])
+  return { total, confirmed, cancelled, pending, today: todayCount, activeTurfs }
+}
+
+module.exports = { createBooking, getMyBookings, getBookingById, cancelBooking, getAllBookings, getAdminStats }

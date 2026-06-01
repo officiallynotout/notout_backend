@@ -25,4 +25,14 @@ const cancelBooking = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, booking, MESSAGES.BOOKING.CANCELLED)
 })
 
-module.exports = { createBooking, getMyBookings, getBookingById, cancelBooking }
+const getAllBookings = asyncHandler(async (req, res) => {
+  const bookings = await bookingService.getAllBookings()
+  return ApiResponse.success(res, bookings)
+})
+
+const getAdminStats = asyncHandler(async (req, res) => {
+  const stats = await bookingService.getAdminStats()
+  return ApiResponse.success(res, stats)
+})
+
+module.exports = { createBooking, getMyBookings, getBookingById, cancelBooking, getAllBookings, getAdminStats }

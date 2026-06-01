@@ -15,7 +15,9 @@ const getAllTurfs = async ({ city, isActive } = {}) => {
     query['location.city'] = new RegExp(city, 'i')
   }
 
-  if (isActive !== undefined && isActive !== null && isActive !== '') {
+  if (isActive === 'all') {
+    // no filter — admin view
+  } else if (isActive !== undefined && isActive !== null && isActive !== '') {
     query.isActive = isActive === 'true' || isActive === true
   } else {
     query.isActive = true

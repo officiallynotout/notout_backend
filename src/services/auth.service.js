@@ -100,6 +100,7 @@ const register = async (name, phone) => {
   const otp = await _setOtp(user)
 
   authDebug('Signup OTP for %s -> %s', phone, otp)
+  console.log(`[OTP] Register → phone: ${phone}  code: ${otp}`)
 
   return _otpResponse(otp)
 }
@@ -143,6 +144,7 @@ const login = async (phone) => {
   const otp = await _setOtp(user)
 
   authDebug('Login OTP for %s -> %s', phone, otp)
+  console.log(`[OTP] Login → phone: ${phone}  code: ${otp}`)
 
   return _otpResponse(otp)
 }
