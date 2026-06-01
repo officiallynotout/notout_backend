@@ -1,7 +1,6 @@
 'use strict'
 
-const Slot     = require('../models/Slot')
-const Turf     = require('../models/Turf')
+const prisma   = require('../config/prisma')
 const ApiError = require('../utils/ApiError')
 const MESSAGES = require('../common/constants/messages.constant')
 const STATUS   = require('../common/constants/status.constant')
@@ -9,94 +8,86 @@ const { timeToMinutes, minutesToTime, isValidTimeRange } = require('../common/he
 const { isFutureOrToday, getLockExpiry }                 = require('../common/helpers/date.helper')
 const { slotDebug }                                      = require('../utils/logger')
 
-/**
- * Return all slots for a given turf + date.
- * Computes effectiveStatus in memory — never writes to the DB.
- */
+const _format = (slot) => ({
+  ...slot,
+  _id: slot.id,
+})
+
 const getSlots = async ({ turfId, date }) => {
-  const turf = await Turf.findOne({ _id: turfId, isActive: true })
+  const turf = await prisma.turf.findFirst({ where: { id: turfId, isActive: true } })
   if (!turf) throw new ApiError(404, MESSAGES.TURF.NOT_FOUND)
 
-  const slots = await Slot.find({ turfId, date }).sort({ startTime: 1 })
+  const slots = await prisma.slot.findMany({
+    where:   { turfId, date },
+    orderBy: { startTime: 'asc' },
+  })
 
   const now = new Date()
 
-  return slots.map((s) => {
-    const obj = s.toObject()
-    obj.effectiveStatus =
+  return slots.map((s) => ({
+    ..._format(s),
+    effectiveStatus:
       s.status === STATUS.SLOT.LOCKED && s.lockedUntil < now
         ? STATUS.SLOT.AVAILABLE
-        : s.status
-    return obj
-  })
+        : s.status,
+  }))
 }
 
 /**
- * Atomically lock a slot for a user for 10 minutes.
- * Also claims expired locks from other users in the same operation.
+ * Atomically lock a slot using a conditional UPDATE.
+ * updateMany with a WHERE condition is a single SQL statement — safe against race conditions.
  */
 const lockSlot = async ({ slotId, userId }) => {
   const now        = new Date()
   const lockExpiry = getLockExpiry(10)
 
-  const slot = await Slot.findOneAndUpdate(
-    {
-      _id: slotId,
-      $or: [
+  const result = await prisma.slot.updateMany({
+    where: {
+      id: slotId,
+      OR: [
         { status: STATUS.SLOT.AVAILABLE },
-        { status: STATUS.SLOT.LOCKED, lockedUntil: { $lt: now } },
+        { status: STATUS.SLOT.LOCKED, lockedUntil: { lt: now } },
       ],
     },
-    {
+    data: {
       status:      STATUS.SLOT.LOCKED,
       lockedBy:    userId,
       lockedUntil: lockExpiry,
     },
-    { new: true }
-  )
+  })
 
-  if (!slot) throw new ApiError(409, MESSAGES.SLOT.UNAVAILABLE)
+  if (result.count === 0) throw new ApiError(409, MESSAGES.SLOT.UNAVAILABLE)
+
+  const slot = await prisma.slot.findUnique({ where: { id: slotId } })
 
   slotDebug('Slot %s locked by %s until %s', slotId, userId, lockExpiry)
-  return slot
+  return _format(slot)
 }
 
-/**
- * Release a slot that was locked by the requesting user.
- */
 const releaseSlot = async ({ slotId, userId }) => {
-  const slot = await Slot.findOneAndUpdate(
-    { _id: slotId, lockedBy: userId, status: STATUS.SLOT.LOCKED },
-    { status: STATUS.SLOT.AVAILABLE, lockedBy: null, lockedUntil: null },
-    { new: true }
-  )
+  const result = await prisma.slot.updateMany({
+    where: { id: slotId, lockedBy: userId, status: STATUS.SLOT.LOCKED },
+    data:  { status: STATUS.SLOT.AVAILABLE, lockedBy: null, lockedUntil: null },
+  })
 
-  if (!slot) throw new ApiError(400, MESSAGES.SLOT.NOT_LOCKED_BY_YOU)
+  if (result.count === 0) throw new ApiError(400, MESSAGES.SLOT.NOT_LOCKED_BY_YOU)
+
+  const slot = await prisma.slot.findUnique({ where: { id: slotId } })
 
   slotDebug('Slot %s released by %s', slotId, userId)
-  return slot
+  return _format(slot)
 }
 
-/**
- * Bulk-generate time slots for a turf on a specific date.
- * Skips (does not throw on) duplicate slots via ordered:false + code 11000.
- */
 const generateSlots = async ({ turfId, date, startTime, endTime, durationMinutes, price }) => {
-  const turf = await Turf.findOne({ _id: turfId, isActive: true })
+  const turf = await prisma.turf.findFirst({ where: { id: turfId, isActive: true } })
   if (!turf) throw new ApiError(404, MESSAGES.TURF.NOT_FOUND)
 
-  if (!isFutureOrToday(date)) {
-    throw new ApiError(400, MESSAGES.SLOT.PAST_DATE)
-  }
+  if (!isFutureOrToday(date)) throw new ApiError(400, MESSAGES.SLOT.PAST_DATE)
+  if (!isValidTimeRange(startTime, endTime)) throw new ApiError(400, MESSAGES.SLOT.INVALID_RANGE)
 
-  if (!isValidTimeRange(startTime, endTime)) {
-    throw new ApiError(400, MESSAGES.SLOT.INVALID_RANGE)
-  }
-
-  // Build the slots array from the time window
-  let current  = timeToMinutes(startTime)
-  const end    = timeToMinutes(endTime)
-  const slots  = []
+  let current = timeToMinutes(startTime)
+  const end   = timeToMinutes(endTime)
+  const slots = []
 
   while (current + durationMinutes <= end) {
     slots.push({
@@ -109,32 +100,14 @@ const generateSlots = async ({ turfId, date, startTime, endTime, durationMinutes
     current += durationMinutes
   }
 
-  if (slots.length === 0) {
-    throw new ApiError(400, MESSAGES.SLOT.NO_SLOTS)
-  }
+  if (slots.length === 0) throw new ApiError(400, MESSAGES.SLOT.NO_SLOTS)
 
-  let inserted = 0
-  try {
-    const result = await Slot.insertMany(slots, { ordered: false })
-    inserted = result.length
-  } catch (err) {
-    if (err.code === 11000) {
-      // Partial success — some slots already existed; count what was inserted
-      inserted = err.insertedDocs?.length || 0
-    } else {
-      throw err
-    }
-  }
+  // skipDuplicates silently ignores slots that already exist (unique constraint on turfId+date+startTime)
+  const result = await prisma.slot.createMany({ data: slots, skipDuplicates: true })
 
-  slotDebug(
-    'Generated %d/%d slots for turf %s on %s',
-    inserted,
-    slots.length,
-    turfId,
-    date
-  )
+  slotDebug('Generated %d/%d slots for turf %s on %s', result.count, slots.length, turfId, date)
 
-  return { created: inserted, total: slots.length, skipped: slots.length - inserted }
+  return { created: result.count, total: slots.length, skipped: slots.length - result.count }
 }
 
 module.exports = { getSlots, lockSlot, releaseSlot, generateSlots }

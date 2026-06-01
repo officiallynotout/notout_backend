@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum SlotStatus {
+  available
+  locked
+  booked
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  cancelled
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  phone        String?
+  phoneHash    String?   @unique
+  email        String?   @unique
+  firebaseUid  String?   @unique
+  role         Role      @default(user)
+  isVerified   Boolean   @default(false)
+  otpCode      String?
+  otpExpiresAt DateTime?
+  refreshToken String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  bookings    Booking[]
+  lockedSlots Slot[]    @relation("SlotLockedBy")
+  bookedSlots Slot[]    @relation("SlotBookedBy")
+}
+
+model Turf {
+  id           String   @id @default(cuid())
+  name         String
+  description  String   @default("")
+  address      String
+  city         String
+  pincode      String   @default("")
+  amenities    String[]
+  pricePerHour Float
+  openTime     String   @default("06:00")
+  closeTime    String   @default("23:00")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  slots    Slot[]
+  bookings Booking[]
+
+  @@index([city])
+}
+
+model Slot {
+  id          String     @id @default(cuid())
+  turfId      String
+  turf        Turf       @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  date        String
+  startTime   String
+  endTime     String
+  price       Float
+  status      SlotStatus @default(available)
+  lockedBy    String?
+  lockedByUser User?     @relation("SlotLockedBy", fields: [lockedBy], references: [id])
+  lockedUntil DateTime?
+  bookedBy    String?
+  bookedByUser User?     @relation("SlotBookedBy", fields: [bookedBy], references: [id])
+  booking     Booking?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([turfId, date, startTime])
+  @@index([date, status])
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  turfId    String?
+  turf      Turf?         @relation(fields: [turfId], references: [id])
+  turfName  String
+  date      String
+  startTime String
+  endTime   String
+  status    BookingStatus @default(confirmed)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([userId])
+}

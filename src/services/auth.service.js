@@ -4,9 +4,9 @@ const bcrypt         = require('bcryptjs')
 const jwt            = require('jsonwebtoken')
 const config         = require('../config/env')
 const firebaseAdmin  = require('../config/firebase')
-const User           = require('../models/User')
+const prisma         = require('../config/prisma')
 const ApiError       = require('../utils/ApiError')
-const { decryptAES } = require('../utils/encrypt')
+const { encryptAES, hashPhone, decryptAES } = require('../utils/encrypt')
 const { authDebug }  = require('../utils/logger')
 const MESSAGES       = require('../common/constants/messages.constant')
 
@@ -14,11 +14,6 @@ const MESSAGES       = require('../common/constants/messages.constant')
 // Private helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Generate a short-lived access token and a 30-day refresh token.
- * @param {import('mongoose').Types.ObjectId} userId
- * @returns {{ accessToken: string, refreshToken: string }}
- */
 const _generateTokens = (userId) => {
   const accessToken = jwt.sign(
     { userId },
@@ -33,12 +28,8 @@ const _generateTokens = (userId) => {
   return { accessToken, refreshToken }
 }
 
-/**
- * Return a safe, plain-object representation of the user.
- * @param {import('../models/User')} user
- */
 const _sanitizeUser = (user) => ({
-  _id:        user._id,
+  _id:        user.id,
   name:       user.name,
   phone:      user.phone ? decryptAES(user.phone) : null,
   email:      user.email || null,
@@ -47,26 +38,25 @@ const _sanitizeUser = (user) => ({
   createdAt:  user.createdAt,
 })
 
-/**
- * Hash the raw refresh token with bcrypt and persist it on the user document.
- * @param {import('../models/User')} user
- * @param {string} refreshToken
- */
-const _attachRefreshToken = async (user, refreshToken) => {
-  user.refreshToken = await bcrypt.hash(refreshToken, 8)
-  await user.save()
-  return user
+const _attachRefreshToken = async (userId, refreshToken) => {
+  const hashed = await bcrypt.hash(refreshToken, 8)
+  return prisma.user.update({
+    where: { id: userId },
+    data:  { refreshToken: hashed },
+  })
 }
 
 const _generateOtp = () => Math.floor(1000 + Math.random() * 9000).toString()
 
-const _setOtp = async (user) => {
+const _setOtp = async (userId) => {
   const otp = _generateOtp()
-  user.otp = {
-    code:      otp,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-  }
-  await user.save()
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      otpCode:      otp,
+      otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    },
+  })
   return otp
 }
 
@@ -86,18 +76,19 @@ const _toIndianMobile = (phone) => {
 // Exported service functions
 // ---------------------------------------------------------------------------
 
-/**
- * Register a new user with phone OTP.
- * Generates a 4-digit OTP valid for 10 minutes.
- */
 const register = async (name, phone) => {
-  const existing = await User.findByPhone(phone)
-  if (existing) {
-    throw new ApiError(409, MESSAGES.AUTH.PHONE_EXISTS)
-  }
+  const existing = await prisma.user.findUnique({ where: { phoneHash: hashPhone(phone) } })
+  if (existing) throw new ApiError(409, MESSAGES.AUTH.PHONE_EXISTS)
 
-  const user = await User.create({ name, phone })
-  const otp = await _setOtp(user)
+  const user = await prisma.user.create({
+    data: {
+      name,
+      phone:     encryptAES(phone),
+      phoneHash: hashPhone(phone),
+    },
+  })
+
+  const otp = await _setOtp(user.id)
 
   authDebug('Signup OTP for %s -> %s', phone, otp)
   console.log(`[OTP] Register → phone: ${phone}  code: ${otp}`)
@@ -105,43 +96,29 @@ const register = async (name, phone) => {
   return _otpResponse(otp)
 }
 
-/**
- * Verify the OTP for a phone number.
- * Marks the user as verified, clears the OTP, and issues tokens.
- */
 const verifyOtp = async (phone, otp) => {
-  const user = await User.findByPhone(phone)
-  if (!user) {
-    throw new ApiError(404, MESSAGES.COMMON.USER_NOT_FOUND)
-  }
+  const user = await prisma.user.findUnique({ where: { phoneHash: hashPhone(phone) } })
+  if (!user) throw new ApiError(404, MESSAGES.COMMON.USER_NOT_FOUND)
 
-  if (user.otp?.code !== otp) {
-    throw new ApiError(400, MESSAGES.AUTH.OTP_INVALID)
-  }
+  if (user.otpCode !== otp) throw new ApiError(400, MESSAGES.AUTH.OTP_INVALID)
+  if (new Date() > user.otpExpiresAt) throw new ApiError(400, MESSAGES.AUTH.OTP_EXPIRED)
 
-  if (new Date() > user.otp.expiresAt) {
-    throw new ApiError(400, MESSAGES.AUTH.OTP_EXPIRED)
-  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data:  { isVerified: true, otpCode: null, otpExpiresAt: null },
+  })
 
-  user.isVerified = true
-  user.otp        = undefined
-
-  const tokens = _generateTokens(user._id)
-  await _attachRefreshToken(user, tokens.refreshToken)
+  const tokens = _generateTokens(user.id)
+  await _attachRefreshToken(user.id, tokens.refreshToken)
 
   return { ...tokens, user: _sanitizeUser(user) }
 }
 
-/**
- * Send a login OTP to an existing user.
- */
 const login = async (phone) => {
-  const user = await User.findByPhone(phone)
-  if (!user) {
-    throw new ApiError(401, MESSAGES.AUTH.INVALID_CREDS)
-  }
+  const user = await prisma.user.findUnique({ where: { phoneHash: hashPhone(phone) } })
+  if (!user) throw new ApiError(401, MESSAGES.AUTH.INVALID_CREDS)
 
-  const otp = await _setOtp(user)
+  const otp = await _setOtp(user.id)
 
   authDebug('Login OTP for %s -> %s', phone, otp)
   console.log(`[OTP] Login → phone: ${phone}  code: ${otp}`)
@@ -149,29 +126,13 @@ const login = async (phone) => {
   return _otpResponse(otp)
 }
 
-/**
- * Return OTP details for the development EJS preview.
- */
 const getOtpPreview = async (phone) => {
-  const user = await User.findByPhone(phone)
-  if (!user) {
-    throw new ApiError(404, MESSAGES.COMMON.USER_NOT_FOUND)
-  }
-
-  if (!user.otp?.code) {
-    throw new ApiError(404, MESSAGES.AUTH.OTP_INVALID)
-  }
-
-  return {
-    name: user.name,
-    otp:  user.otp.code,
-  }
+  const user = await prisma.user.findUnique({ where: { phoneHash: hashPhone(phone) } })
+  if (!user) throw new ApiError(404, MESSAGES.COMMON.USER_NOT_FOUND)
+  if (!user.otpCode) throw new ApiError(404, MESSAGES.AUTH.OTP_INVALID)
+  return { name: user.name, otp: user.otpCode }
 }
 
-/**
- * Authenticate via Firebase ID token.
- * Creates or links a user record using Firebase's verified phone number.
- */
 const firebaseLogin = async (firebaseToken, name) => {
   let decoded
   try {
@@ -182,46 +143,48 @@ const firebaseLogin = async (firebaseToken, name) => {
 
   const { uid, phone_number, email, name: fbName } = decoded
   const phone = _toIndianMobile(phone_number)
-  if (!phone_number && !email) {
-    throw new ApiError(401, MESSAGES.AUTH.INVALID_FIREBASE)
-  }
 
-  let user = await User.findOne({ firebaseUid: uid })
+  if (!phone_number && !email) throw new ApiError(401, MESSAGES.AUTH.INVALID_FIREBASE)
+
+  let user = await prisma.user.findUnique({ where: { firebaseUid: uid } })
+
   if (!user && phone) {
-    user = await User.findByPhone(phone)
+    user = await prisma.user.findUnique({ where: { phoneHash: hashPhone(phone) } })
   }
   if (!user && email) {
-    user = await User.findOne({ email })
+    user = await prisma.user.findUnique({ where: { email } })
   }
 
   if (!user) {
-    user = await User.create({
-      name:        name || fbName || 'User',
-      firebaseUid: uid,
-      phone:       phone,
-      email:       email || null,
-      isVerified:  true,
+    user = await prisma.user.create({
+      data: {
+        name:        name || fbName || 'User',
+        firebaseUid: uid,
+        phone:       phone ? encryptAES(phone) : null,
+        phoneHash:   phone ? hashPhone(phone) : null,
+        email:       email || null,
+        isVerified:  true,
+      },
     })
   } else {
-    user.firebaseUid = user.firebaseUid || uid
-    user.isVerified  = true
-
-    if (name) user.name = name
-    if (email && !user.email) user.email = email
-    if (phone && !user.phone) user.phone = phone
-
-    await user.save()
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        firebaseUid: user.firebaseUid || uid,
+        isVerified:  true,
+        ...(name && { name }),
+        ...(email && !user.email && { email }),
+        ...(phone && !user.phone && { phone: encryptAES(phone), phoneHash: hashPhone(phone) }),
+      },
+    })
   }
 
-  const tokens = _generateTokens(user._id)
-  await _attachRefreshToken(user, tokens.refreshToken)
+  const tokens = _generateTokens(user.id)
+  await _attachRefreshToken(user.id, tokens.refreshToken)
 
   return { ...tokens, user: _sanitizeUser(user) }
 }
 
-/**
- * Verify the refresh token and issue a new access token.
- */
 const refreshAccessToken = async (refreshToken) => {
   let decoded
   try {
@@ -230,18 +193,14 @@ const refreshAccessToken = async (refreshToken) => {
     throw new ApiError(401, MESSAGES.AUTH.REFRESH_INVALID)
   }
 
-  const user = await User.findById(decoded.userId)
-  if (!user?.refreshToken) {
-    throw new ApiError(401, MESSAGES.AUTH.REFRESH_INVALID)
-  }
+  const user = await prisma.user.findUnique({ where: { id: decoded.userId } })
+  if (!user?.refreshToken) throw new ApiError(401, MESSAGES.AUTH.REFRESH_INVALID)
 
   const isValid = await bcrypt.compare(refreshToken, user.refreshToken)
-  if (!isValid) {
-    throw new ApiError(401, MESSAGES.AUTH.REFRESH_MISMATCH)
-  }
+  if (!isValid) throw new ApiError(401, MESSAGES.AUTH.REFRESH_MISMATCH)
 
   const accessToken = jwt.sign(
-    { userId: user._id },
+    { userId: user.id },
     config.JWT_SECRET,
     { expiresIn: config.JWT_EXPIRES_IN }
   )
@@ -249,11 +208,8 @@ const refreshAccessToken = async (refreshToken) => {
   return { accessToken }
 }
 
-/**
- * Log out by clearing the stored refresh token hash.
- */
 const logout = async (userId) => {
-  await User.findByIdAndUpdate(userId, { refreshToken: null })
+  await prisma.user.update({ where: { id: userId }, data: { refreshToken: null } })
   return { message: MESSAGES.AUTH.LOGGED_OUT }
 }
 

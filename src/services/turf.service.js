@@ -1,71 +1,96 @@
 'use strict'
 
-const Turf     = require('../models/Turf')
+const prisma   = require('../config/prisma')
 const ApiError = require('../utils/ApiError')
 const MESSAGES = require('../common/constants/messages.constant')
 
-/**
- * Return all turfs, optionally filtered by city and/or isActive.
- * Defaults to showing only active turfs when isActive is not specified.
- */
+// Reshape flat DB row → nested API shape the frontend expects
+const _format = (turf) => ({
+  _id:         turf.id,
+  name:        turf.name,
+  description: turf.description,
+  location: {
+    address: turf.address,
+    city:    turf.city,
+    pincode: turf.pincode,
+  },
+  amenities:    turf.amenities,
+  pricePerHour: turf.pricePerHour,
+  operatingHours: {
+    open:  turf.openTime,
+    close: turf.closeTime,
+  },
+  isActive:  turf.isActive,
+  createdAt: turf.createdAt,
+  updatedAt: turf.updatedAt,
+})
+
+// Flatten nested input → DB columns
+const _flatten = (data) => {
+  const out = { ...data }
+  if (data.location) {
+    out.address = data.location.address
+    out.city    = data.location.city
+    out.pincode = data.location.pincode ?? ''
+    delete out.location
+  }
+  if (data.operatingHours) {
+    out.openTime  = data.operatingHours.open
+    out.closeTime = data.operatingHours.close
+    delete out.operatingHours
+  }
+  return out
+}
+
 const getAllTurfs = async ({ city, isActive } = {}) => {
-  const query = {}
+  const where = {}
 
   if (city) {
-    query['location.city'] = new RegExp(city, 'i')
+    where.city = { contains: city, mode: 'insensitive' }
   }
 
   if (isActive === 'all') {
     // no filter — admin view
   } else if (isActive !== undefined && isActive !== null && isActive !== '') {
-    query.isActive = isActive === 'true' || isActive === true
+    where.isActive = isActive === 'true' || isActive === true
   } else {
-    query.isActive = true
+    where.isActive = true
   }
 
-  return Turf.find(query).select('-__v').sort({ createdAt: -1 })
-}
-
-/**
- * Return a single turf by its MongoDB ObjectId string.
- * Throws 404 if not found.
- */
-const getTurfById = async (turfId) => {
-  const turf = await Turf.findById(turfId).select('-__v')
-  if (!turf) throw new ApiError(404, MESSAGES.TURF.NOT_FOUND)
-  return turf
-}
-
-/**
- * Create a new turf document.
- */
-const createTurf = async (data) => {
-  return Turf.create(data)
-}
-
-/**
- * Update an existing turf. Throws 404 if not found.
- */
-const updateTurf = async (turfId, data) => {
-  const turf = await Turf.findByIdAndUpdate(turfId, data, {
-    new:          true,
-    runValidators: true,
+  const turfs = await prisma.turf.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
   })
-  if (!turf) throw new ApiError(404, MESSAGES.TURF.NOT_FOUND)
-  return turf
+
+  return turfs.map(_format)
 }
 
-/**
- * Soft-delete a turf by setting isActive = false.
- * Throws 404 if not found.
- */
-const deleteTurf = async (turfId) => {
-  const turf = await Turf.findByIdAndUpdate(
-    turfId,
-    { isActive: false },
-    { new: true }
-  )
+const getTurfById = async (turfId) => {
+  const turf = await prisma.turf.findUnique({ where: { id: turfId } })
   if (!turf) throw new ApiError(404, MESSAGES.TURF.NOT_FOUND)
+  return _format(turf)
+}
+
+const createTurf = async (data) => {
+  const turf = await prisma.turf.create({ data: _flatten(data) })
+  return _format(turf)
+}
+
+const updateTurf = async (turfId, data) => {
+  const turf = await prisma.turf.update({
+    where: { id: turfId },
+    data:  _flatten(data),
+  }).catch(() => { throw new ApiError(404, MESSAGES.TURF.NOT_FOUND) })
+
+  return _format(turf)
+}
+
+const deleteTurf = async (turfId) => {
+  await prisma.turf.update({
+    where: { id: turfId },
+    data:  { isActive: false },
+  }).catch(() => { throw new ApiError(404, MESSAGES.TURF.NOT_FOUND) })
+
   return { message: MESSAGES.TURF.DEACTIVATED }
 }
 

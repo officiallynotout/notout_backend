@@ -1,15 +1,14 @@
 'use strict'
 
-const mongoose    = require('mongoose')
-const config      = require('./env')
+const prisma      = require('./prisma')
 const { dbDebug } = require('../utils/logger')
 
 async function connectDB() {
   try {
-    await mongoose.connect(config.MONGO_URI)
-    dbDebug('MongoDB connected')
+    await prisma.$connect()
+    dbDebug('PostgreSQL connected via Prisma')
   } catch (err) {
-    console.error('❌ MongoDB connection error:', err.message)
+    console.error('❌ Database connection error:', err.message)
     process.exit(1)
   }
 }
