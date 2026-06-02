@@ -8,7 +8,6 @@
     "debug": "cross-env NODE_ENV=development DEBUG=app:* nodemon server.js"
   },
   "dependencies": {
-    "@prisma/client": "^7.8.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -26,7 +25,8 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@prisma/client": "^6.19.3",
     "nodemon": "^3.0.0",
-    "prisma": "^7.8.0"
+    "prisma": "^6.19.3"
   }
 }

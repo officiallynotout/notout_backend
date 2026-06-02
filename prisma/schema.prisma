@@ -100,6 +100,8 @@ model Booking {
   status    BookingStatus @default(confirmed)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+  slotId    String?       @unique
+  slot      Slot?         @relation(fields: [slotId], references: [id])
 
   @@index([userId])
 }
