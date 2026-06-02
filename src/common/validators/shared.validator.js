@@ -7,11 +7,11 @@ const Joi = require('joi')
  */
 
 const mongoId = Joi.string()
-  .hex()
-  .length(24)
+  .min(1)
+  .max(36)
   .messages({
-    'string.length': 'Invalid ID',
-    'string.hex':    'Invalid ID',
+    'string.min': 'Invalid ID',
+    'string.max': 'Invalid ID',
   })
 
 const phone = Joi.string()
@@ -34,4 +34,8 @@ const time = Joi.string()
 
 const password = Joi.string().min(6).max(50)
 
-module.exports = { mongoId, phone, date, time, password }
+const page = Joi.number().integer().min(1).default(1)
+
+const limit = Joi.number().integer().min(1).max(100).default(10)
+
+module.exports = { mongoId, phone, date, time, password, page, limit }

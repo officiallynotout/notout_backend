@@ -11,8 +11,8 @@ const createBooking = asyncHandler(async (req, res) => {
 })
 
 const getMyBookings = asyncHandler(async (req, res) => {
-  const bookings = await bookingService.getMyBookings(req.user._id)
-  return ApiResponse.success(res, bookings)
+  const { data, pagination } = await bookingService.getMyBookings(req.user._id, req.query)
+  return ApiResponse.paginated(res, data, pagination)
 })
 
 const getBookingById = asyncHandler(async (req, res) => {
@@ -26,8 +26,8 @@ const cancelBooking = asyncHandler(async (req, res) => {
 })
 
 const getAllBookings = asyncHandler(async (req, res) => {
-  const bookings = await bookingService.getAllBookings()
-  return ApiResponse.success(res, bookings)
+  const { data, pagination } = await bookingService.getAllBookings(req.query)
+  return ApiResponse.paginated(res, data, pagination)
 })
 
 const getAdminStats = asyncHandler(async (req, res) => {

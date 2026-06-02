@@ -6,8 +6,8 @@ const turfService   = require('../../../../services/turf.service')
 const MESSAGES      = require('../../../../common/constants/messages.constant')
 
 const getAllTurfs = asyncHandler(async (req, res) => {
-  const result = await turfService.getAllTurfs(req.query)
-  return ApiResponse.success(res, result)
+  const { data, pagination } = await turfService.getAllTurfs(req.query)
+  return ApiResponse.paginated(res, data, pagination)
 })
 
 const getTurfById = asyncHandler(async (req, res) => {

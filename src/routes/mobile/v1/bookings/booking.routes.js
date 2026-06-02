@@ -2,19 +2,18 @@
 
 const router          = require('express').Router()
 const controller      = require('./booking.controller')
-const authMiddleware  = require('../../../../middleware/auth.middleware')
 const adminMiddleware = require('../../../../middleware/admin.middleware')
 const { validate }    = require('../../../../middleware/validate.middleware')
-const { createBookingSchema } = require('./booking.validator')
+const { createBookingSchema, listBookingsSchema } = require('./booking.validator')
 
-router.post('/',    authMiddleware, validate(createBookingSchema), controller.createBooking)
-router.get('/',     authMiddleware, controller.getMyBookings)
+router.post('/',    validate(createBookingSchema),        controller.createBooking)
+router.get('/',     validate(listBookingsSchema, 'query'), controller.getMyBookings)
 
 // Admin-only routes — must be declared before /:id to avoid param conflict
-router.get('/admin/all',   authMiddleware, adminMiddleware, controller.getAllBookings)
-router.get('/admin/stats', authMiddleware, adminMiddleware, controller.getAdminStats)
+router.get('/admin/all',   adminMiddleware, validate(listBookingsSchema, 'query'), controller.getAllBookings)
+router.get('/admin/stats', adminMiddleware, controller.getAdminStats)
 
-router.get('/:id',  authMiddleware, controller.getBookingById)
-router.patch('/:id/cancel', authMiddleware, controller.cancelBooking)
+router.get('/:id',          controller.getBookingById)
+router.patch('/:id/cancel', controller.cancelBooking)
 
 module.exports = router

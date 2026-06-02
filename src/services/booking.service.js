@@ -3,6 +3,7 @@
 const prisma   = require('../config/prisma')
 const ApiError = require('../utils/ApiError')
 const MESSAGES = require('../common/constants/messages.constant')
+const { parsePagination, paginationMeta } = require('../common/helpers/pagination.helper')
 const { isFutureOrToday } = require('../common/helpers/date.helper')
 const { isValidTimeRange } = require('../common/helpers/time.helper')
 const { decryptAES } = require('../utils/encrypt')
@@ -52,12 +53,16 @@ const createBooking = async (userId, payload) => {
   return _format(booking)
 }
 
-const getMyBookings = async (userId) => {
-  const bookings = await prisma.booking.findMany({
-    where:   { userId },
-    orderBy: [{ date: 'desc' }, { startTime: 'desc' }],
-  })
-  return bookings.map(_format)
+const getMyBookings = async (userId, query = {}) => {
+  const { page, limit, skip, take } = parsePagination(query)
+  const where = { userId }
+
+  const [bookings, total] = await Promise.all([
+    prisma.booking.findMany({ where, orderBy: [{ date: 'desc' }, { startTime: 'desc' }], skip, take }),
+    prisma.booking.count({ where }),
+  ])
+
+  return { data: bookings.map(_format), pagination: paginationMeta(total, page, limit) }
 }
 
 const getBookingById = async (bookingId, userId) => {
@@ -79,12 +84,20 @@ const cancelBooking = async (bookingId, userId) => {
   return _format(updated)
 }
 
-const getAllBookings = async () => {
-  const bookings = await prisma.booking.findMany({
-    include: { user: { select: { id: true, name: true, phone: true } } },
-    orderBy: [{ date: 'desc' }, { startTime: 'desc' }],
-  })
-  return bookings.map(_formatAdmin)
+const getAllBookings = async (query = {}) => {
+  const { page, limit, skip, take } = parsePagination(query)
+
+  const [bookings, total] = await Promise.all([
+    prisma.booking.findMany({
+      include: { user: { select: { id: true, name: true, phone: true } } },
+      orderBy: [{ date: 'desc' }, { startTime: 'desc' }],
+      skip,
+      take,
+    }),
+    prisma.booking.count(),
+  ])
+
+  return { data: bookings.map(_formatAdmin), pagination: paginationMeta(total, page, limit) }
 }
 
 const getAdminStats = async () => {

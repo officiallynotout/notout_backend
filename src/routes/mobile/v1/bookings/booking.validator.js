@@ -1,7 +1,7 @@
 'use strict'
 
 const Joi = require('joi')
-const { date, time } = require('../../../../common/validators/shared.validator')
+const { date, time, page, limit } = require('../../../../common/validators/shared.validator')
 
 const createBookingSchema = Joi.object({
   turfName:  Joi.string().trim().min(2).max(80).required(),
@@ -10,4 +10,6 @@ const createBookingSchema = Joi.object({
   endTime:   time.required(),
 })
 
-module.exports = { createBookingSchema }
+const listBookingsSchema = Joi.object({ page, limit })
+
+module.exports = { createBookingSchema, listBookingsSchema }

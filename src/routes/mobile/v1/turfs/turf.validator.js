@@ -1,7 +1,14 @@
 'use strict'
 
-const Joi      = require('joi')
-const { mongoId } = require('../../../../common/validators/shared.validator')
+const Joi                        = require('joi')
+const { mongoId, page, limit }   = require('../../../../common/validators/shared.validator')
+
+const getTurfsSchema = Joi.object({
+  city:     Joi.string().optional(),
+  isActive: Joi.string().valid('true', 'false', 'all').optional(),
+  page,
+  limit,
+})
 
 const createTurfSchema = Joi.object({
   name: Joi.string().trim().min(2).max(100).required(),
@@ -47,4 +54,4 @@ const updateTurfSchema = Joi.object({
   isActive: Joi.boolean().optional(),
 })
 
-module.exports = { createTurfSchema, updateTurfSchema }
+module.exports = { getTurfsSchema, createTurfSchema, updateTurfSchema }

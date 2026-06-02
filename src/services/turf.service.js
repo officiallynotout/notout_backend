@@ -3,6 +3,7 @@
 const prisma   = require('../config/prisma')
 const ApiError = require('../utils/ApiError')
 const MESSAGES = require('../common/constants/messages.constant')
+const { parsePagination, paginationMeta } = require('../common/helpers/pagination.helper')
 
 // Reshape flat DB row → nested API shape the frontend expects
 const _format = (turf) => ({
@@ -42,7 +43,9 @@ const _flatten = (data) => {
   return out
 }
 
-const getAllTurfs = async ({ city, isActive } = {}) => {
+const getAllTurfs = async (query = {}) => {
+  const { city, isActive } = query
+  const { page, limit, skip, take } = parsePagination(query)
   const where = {}
 
   if (city) {
@@ -57,12 +60,12 @@ const getAllTurfs = async ({ city, isActive } = {}) => {
     where.isActive = true
   }
 
-  const turfs = await prisma.turf.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-  })
+  const [turfs, total] = await Promise.all([
+    prisma.turf.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+    prisma.turf.count({ where }),
+  ])
 
-  return turfs.map(_format)
+  return { data: turfs.map(_format), pagination: paginationMeta(total, page, limit) }
 }
 
 const getTurfById = async (turfId) => {

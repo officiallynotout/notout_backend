@@ -6,8 +6,9 @@ const cookieParser = require('cookie-parser')
 const morgan       = require('morgan')
 const path         = require('path')
 const config       = require('./config/env')
-const errorHandler = require('./middleware/errorHandler.middleware')
-const MESSAGES     = require('./common/constants/messages.constant')
+const errorHandler             = require('./middleware/errorHandler.middleware')
+const { generalLimiter }       = require('./middleware/rateLimiter.middleware')
+const MESSAGES                 = require('./common/constants/messages.constant')
 
 const app = express()
 
@@ -33,6 +34,9 @@ app.use(cors({
 
 // ── Request logging ─────────────────────────────────────────────────────────
 app.use(config.NODE_ENV === 'development' ? morgan('dev') : morgan('combined'))
+
+// ── Rate limiting ────────────────────────────────────────────────────────────
+app.use(generalLimiter)
 
 // ── View engine (EJS for email templates) ───────────────────────────────────
 app.set('view engine', 'ejs')
