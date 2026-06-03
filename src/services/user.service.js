@@ -26,4 +26,11 @@ const updateProfile = async (userId, { name }) => {
   return formatProfile(user)
 }
 
-module.exports = { getProfile, updateProfile }
+const updateLocation = async (userId, { latitude, longitude }) => {
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { latitude, longitude },
+  }).catch(() => { throw new ApiError(404, MESSAGES.COMMON.USER_NOT_FOUND) })
+}
+
+module.exports = { getProfile, updateProfile, updateLocation }

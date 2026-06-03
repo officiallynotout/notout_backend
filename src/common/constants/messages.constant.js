@@ -44,7 +44,8 @@ module.exports = {
     CANNOT_CANCEL:    'Cannot cancel a past booking',
   },
   USER: {
-    UPDATED: 'Profile updated successfully',
+    UPDATED:          'Profile updated successfully',
+    LOCATION_UPDATED: 'Location updated successfully',
   },
   COMMON: {
     NOT_FOUND:        'Resource not found',

@@ -37,6 +37,8 @@ model User {
   otpCode      String?
   otpExpiresAt DateTime?
   refreshToken String?
+  latitude     Float?
+  longitude    Float?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -56,6 +58,8 @@ model Turf {
   pricePerHour Float
   openTime     String   @default("06:00")
   closeTime    String   @default("23:00")
+  latitude     Float?
+  longitude    Float?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

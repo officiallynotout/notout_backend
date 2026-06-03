@@ -15,4 +15,9 @@ const updateProfile = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, profile, MESSAGES.USER.UPDATED)
 })
 
-module.exports = { getProfile, updateProfile }
+const updateLocation = asyncHandler(async (req, res) => {
+  await userService.updateLocation(req.user._id, req.body)
+  return ApiResponse.success(res, null, MESSAGES.USER.LOCATION_UPDATED)
+})
+
+module.exports = { getProfile, updateProfile, updateLocation }

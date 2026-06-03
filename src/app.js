@@ -35,6 +35,9 @@ app.use(cors({
 // ── Request logging ─────────────────────────────────────────────────────────
 app.use(config.NODE_ENV === 'development' ? morgan('dev') : morgan('combined'))
 
+// ── Trust one proxy layer (required for express-rate-limit behind a proxy/tunnel)
+app.set('trust proxy', 1)
+
 // ── Rate limiting ────────────────────────────────────────────────────────────
 app.use(generalLimiter)
 

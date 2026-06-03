@@ -1,5 +1,6 @@
 'use strict'
 
+const jwt          = require('jsonwebtoken')
 const asyncHandler = require('../../../../utils/asyncHandler')
 const ApiResponse  = require('../../../../utils/ApiResponse')
 const authService  = require('../../../../services/auth.service')
@@ -407,9 +408,17 @@ const refreshToken = asyncHandler(async (req, res) => {
  * Invalidate the user's refresh token. Requires authMiddleware.
  */
 const logout = asyncHandler(async (req, res) => {
-  const result = await authService.logout(req.user._id)
+  try {
+    const token = req.headers.authorization?.split(' ')[1] || req.cookies.accessToken
+    if (token) {
+      const decoded = jwt.verify(token, config.JWT_SECRET)
+      await authService.logout(decoded.userId)
+    }
+  } catch {
+    // Token invalid or user not found — still clear client session
+  }
   clearAuthCookies(res)
-  return ApiResponse.success(res, result, MESSAGES.AUTH.LOGGED_OUT)
+  return ApiResponse.success(res, null, MESSAGES.AUTH.LOGGED_OUT)
 })
 
 module.exports = {

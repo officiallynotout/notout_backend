@@ -4,8 +4,10 @@ const Joi                        = require('joi')
 const { mongoId, page, limit }   = require('../../../../common/validators/shared.validator')
 
 const getTurfsSchema = Joi.object({
-  city:     Joi.string().optional(),
-  isActive: Joi.string().valid('true', 'false', 'all').optional(),
+  city:      Joi.string().optional(),
+  isActive:  Joi.string().valid('true', 'false', 'all').optional(),
+  latitude:  Joi.number().min(-90).max(90).optional(),
+  longitude: Joi.number().min(-180).max(180).optional(),
   page,
   limit,
 })
