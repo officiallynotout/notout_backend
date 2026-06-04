@@ -47,6 +47,10 @@ module.exports = {
     UPDATED:          'Profile updated successfully',
     LOCATION_UPDATED: 'Location updated successfully',
   },
+  NOTIFICATION: {
+    TOKEN_SAVED:   'Push token registered',
+    TOKEN_REMOVED: 'Push token removed',
+  },
   COMMON: {
     NOT_FOUND:        'Resource not found',
     ROUTE_NOT_FOUND:  'Route not found',

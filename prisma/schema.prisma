@@ -36,8 +36,9 @@ model User {
   isVerified   Boolean   @default(false)
   otpCode      String?
   otpExpiresAt DateTime?
-  refreshToken String?
-  latitude     Float?
+  refreshToken   String?
+  expoPushToken  String?
+  latitude       Float?
   longitude    Float?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

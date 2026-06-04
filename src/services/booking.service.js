@@ -1,8 +1,9 @@
 'use strict'
 
-const prisma   = require('../config/prisma')
-const ApiError = require('../utils/ApiError')
-const MESSAGES = require('../common/constants/messages.constant')
+const prisma                = require('../config/prisma')
+const ApiError              = require('../utils/ApiError')
+const MESSAGES              = require('../common/constants/messages.constant')
+const notificationService   = require('./notification.service')
 const { parsePagination, paginationMeta } = require('../common/helpers/pagination.helper')
 const { isFutureOrToday } = require('../common/helpers/date.helper')
 const { isValidTimeRange } = require('../common/helpers/time.helper')
@@ -50,6 +51,12 @@ const createBooking = async (userId, payload) => {
     },
   })
 
+  notificationService.sendToUser(userId, {
+    title: 'Booking Confirmed',
+    body:  `${booking.turfName} on ${booking.date} · ${booking.startTime}–${booking.endTime}`,
+    data:  { bookingId: booking.id, screen: 'MyBookings' },
+  })
+
   return _format(booking)
 }
 
@@ -81,6 +88,13 @@ const cancelBooking = async (bookingId, userId) => {
     where: { id: bookingId },
     data:  { status: 'cancelled' },
   })
+
+  notificationService.sendToUser(userId, {
+    title: 'Booking Cancelled',
+    body:  `Your booking at ${updated.turfName} on ${updated.date} has been cancelled.`,
+    data:  { bookingId: updated.id, screen: 'MyBookings' },
+  })
+
   return _format(updated)
 }
 

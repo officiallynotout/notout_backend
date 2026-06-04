@@ -12,6 +12,7 @@ router.use(authMiddleware)
 router.use('/users',    require('./users/user.routes'))
 router.use('/turfs',    require('./turfs/turf.routes'))
 router.use('/slots',    require('./slots/slot.routes'))
-router.use('/bookings', require('./bookings/booking.routes'))
+router.use('/bookings',      require('./bookings/booking.routes'))
+router.use('/notifications', require('./notifications/notifications.routes'))
 
 module.exports = router

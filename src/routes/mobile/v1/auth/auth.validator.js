@@ -17,10 +17,6 @@ const verifyOtpSchema = Joi.object({
   otp:   Joi.string().length(4).pattern(/^\d+$/).required(),
 })
 
-const otpPreviewSchema = Joi.object({
-  phone: phone.required(),
-})
-
 const firebaseAuthSchema = Joi.object({
   firebaseToken: Joi.string().required(),
   name:          Joi.string().trim().min(2).max(50).optional(),
@@ -34,7 +30,6 @@ module.exports = {
   registerSchema,
   loginSchema,
   verifyOtpSchema,
-  otpPreviewSchema,
   firebaseAuthSchema,
   refreshTokenSchema,
 }

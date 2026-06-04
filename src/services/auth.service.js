@@ -91,8 +91,6 @@ const register = async (name, phone) => {
   const otp = await _setOtp(user.id)
 
   authDebug('Signup OTP for %s -> %s', phone, otp)
-  console.log(`[OTP] Register → phone: ${phone}  code: ${otp}`)
-
   return _otpResponse(otp)
 }
 
@@ -121,16 +119,7 @@ const login = async (phone) => {
   const otp = await _setOtp(user.id)
 
   authDebug('Login OTP for %s -> %s', phone, otp)
-  console.log(`[OTP] Login → phone: ${phone}  code: ${otp}`)
-
   return _otpResponse(otp)
-}
-
-const getOtpPreview = async (phone) => {
-  const user = await prisma.user.findUnique({ where: { phoneHash: hashPhone(phone) } })
-  if (!user) throw new ApiError(404, MESSAGES.COMMON.USER_NOT_FOUND)
-  if (!user.otpCode) throw new ApiError(404, MESSAGES.AUTH.OTP_INVALID)
-  return { name: user.name, otp: user.otpCode }
 }
 
 const firebaseLogin = async (firebaseToken, name) => {
@@ -217,7 +206,6 @@ module.exports = {
   register,
   verifyOtp,
   login,
-  getOtpPreview,
   firebaseLogin,
   refreshAccessToken,
   logout,
