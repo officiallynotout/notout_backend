@@ -14,13 +14,11 @@ const _format = (slot) => ({
 })
 
 const getSlots = async ({ turfId, date }) => {
-  const turf = await prisma.turf.findFirst({ where: { id: turfId, isActive: true } })
+  const [turf, slots] = await Promise.all([
+    prisma.turf.findFirst({ where: { id: turfId, isActive: true } }),
+    prisma.slot.findMany({ where: { turfId, date }, orderBy: { startTime: 'asc' } }),
+  ])
   if (!turf) throw new ApiError(404, MESSAGES.TURF.NOT_FOUND)
-
-  const slots = await prisma.slot.findMany({
-    where:   { turfId, date },
-    orderBy: { startTime: 'asc' },
-  })
 
   const now = new Date()
 
