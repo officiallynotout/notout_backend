@@ -62,7 +62,8 @@ const _setOtp = async (userId) => {
 
 const _otpResponse = (otp) => ({
   message: MESSAGES.AUTH.OTP_SENT,
-  ...(config.NODE_ENV === 'development' && { otp }),
+  // ...(config.NODE_ENV === 'development' && { otp }),
+  otp,
 })
 
 const _toIndianMobile = (phone) => {
