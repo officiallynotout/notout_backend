@@ -2,6 +2,8 @@
 
 const rateLimit = require('express-rate-limit')
 
+const isDev = process.env.NODE_ENV !== 'production'
+
 const handler = (req, res) =>
   res.status(429).json({
     success: false,
@@ -15,6 +17,7 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders:   false,
   handler,
+  skip: () => isDev,
 })
 
 // All /auth/* routes
@@ -24,6 +27,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders:   false,
   handler,
+  skip: () => isDev,
 })
 
 // OTP-sending routes only (/login and /register)
@@ -33,6 +37,17 @@ const otpLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders:   false,
   handler,
+  skip: () => isDev,
 })
 
-module.exports = { generalLimiter, authLimiter, otpLimiter }
+// Per-ball scoring routes — 1 ball every ~30s, allow headroom for fast play
+const cricketLimiter = rateLimit({
+  windowMs:        60 * 1000,  // 1 minute
+  max:             30,          // max 30 balls/minute per IP (well above any real match pace)
+  standardHeaders: true,
+  legacyHeaders:   false,
+  handler,
+  skip: () => isDev,
+})
+
+module.exports = { generalLimiter, authLimiter, otpLimiter, cricketLimiter }

@@ -6,8 +6,8 @@ const slotService   = require('../../../../services/slot.service')
 const MESSAGES      = require('../../../../common/constants/messages.constant')
 
 const getSlots = asyncHandler(async (req, res) => {
-  const { turfId, date } = req.query
-  const result = await slotService.getSlots({ turfId, date })
+  const { boxId, date } = req.query
+  const result = await slotService.getSlots({ boxId, date })
   return ApiResponse.success(res, result)
 })
 

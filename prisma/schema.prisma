@@ -43,9 +43,10 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  bookings    Booking[]
-  lockedSlots Slot[]    @relation("SlotLockedBy")
-  bookedSlots Slot[]    @relation("SlotBookedBy")
+  bookings       Booking[]
+  lockedSlots    Slot[]         @relation("SlotLockedBy")
+  bookedSlots    Slot[]         @relation("SlotBookedBy")
+  cricketMatches CricketMatch[]
 }
 
 model Turf {
@@ -56,6 +57,7 @@ model Turf {
   city         String
   pincode      String   @default("")
   amenities    String[]
+  images       String[] @default([])
   pricePerHour Float
   openTime     String   @default("06:00")
   closeTime    String   @default("23:00")
@@ -65,16 +67,33 @@ model Turf {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  boxes    Box[]
   slots    Slot[]
   bookings Booking[]
 
   @@index([city])
 }
 
+model Box {
+  id        String   @id @default(cuid())
+  turfId    String
+  turf      Turf     @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slots Slot[]
+
+  @@index([turfId])
+}
+
 model Slot {
   id          String     @id @default(cuid())
   turfId      String
   turf        Turf       @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  boxId       String
+  box         Box        @relation(fields: [boxId], references: [id], onDelete: Cascade)
   date        String
   startTime   String
   endTime     String
@@ -89,8 +108,9 @@ model Slot {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  @@unique([turfId, date, startTime])
-  @@index([date, status])
+  @@unique([boxId, date, startTime])
+  @@index([turfId, date, status])
+  @@index([boxId, date, status])
 }
 
 model Booking {
@@ -110,4 +130,136 @@ model Booking {
   slot      Slot?         @relation(fields: [slotId], references: [id])
 
   @@index([userId])
+}
+
+// ── Cricket Scoreboard ────────────────────────────────────────────────────────
+
+enum CricketMatchStatus {
+  SETUP
+  IN_PROGRESS
+  INNINGS_BREAK
+  COMPLETED
+}
+
+enum CricketInningsStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum DismissalType {
+  BOWLED
+  CAUGHT
+  RUN_OUT
+  LBW
+  STUMPED
+  HIT_WICKET
+  RETIRED_HURT
+}
+
+model CricketMatch {
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id])
+  shareCode      String             @unique
+  team1Name      String
+  team2Name      String
+  battingFirst   String             // "team1" | "team2"
+  totalOvers     Int
+  playersPerSide Int
+  trackExtras    Boolean            @default(false)
+  status         CricketMatchStatus @default(SETUP)
+  result         String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  innings CricketInnings[]
+
+  @@index([userId])
+}
+
+model CricketInnings {
+  id                       String               @id @default(cuid())
+  matchId                  String
+  match                    CricketMatch         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  inningsNumber            Int
+  battingTeam              String               // "team1" | "team2"
+  totalRuns                Int                  @default(0)
+  totalWickets             Int                  @default(0)
+  totalBalls               Int                  @default(0)
+  extrasWides              Int                  @default(0)
+  extrasNoBalls            Int                  @default(0)
+  extrasByes               Int                  @default(0)
+  extrasLegByes            Int                  @default(0)
+  status                   CricketInningsStatus @default(IN_PROGRESS)
+  currentOverNumber        Int                  @default(1)
+  currentLegalBallsInOver  Int                  @default(0)
+  currentBowlerName        String?
+  currentStrikeBatsman     String?
+  currentNonStrikeBatsman  String?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  balls   CricketBall[]
+  batsmen CricketBatsmanScore[]
+  bowlers CricketBowlerScore[]
+
+  @@unique([matchId, inningsNumber])
+  @@index([matchId])
+}
+
+model CricketBatsmanScore {
+  id            String         @id @default(cuid())
+  inningsId     String
+  innings       CricketInnings @relation(fields: [inningsId], references: [id], onDelete: Cascade)
+  playerName    String
+  runs          Int            @default(0)
+  balls         Int            @default(0)
+  fours         Int            @default(0)
+  sixes         Int            @default(0)
+  isOut         Boolean        @default(false)
+  dismissalType DismissalType?
+  battingOrder  Int
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([inningsId])
+}
+
+model CricketBowlerScore {
+  id         String         @id @default(cuid())
+  inningsId  String
+  innings    CricketInnings @relation(fields: [inningsId], references: [id], onDelete: Cascade)
+  playerName String
+  balls      Int            @default(0)
+  runs       Int            @default(0)
+  wickets    Int            @default(0)
+  maidens    Int            @default(0)
+  wides      Int            @default(0)
+  noBalls    Int            @default(0)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([inningsId])
+}
+
+model CricketBall {
+  id                   String         @id @default(cuid())
+  inningsId            String
+  innings              CricketInnings @relation(fields: [inningsId], references: [id], onDelete: Cascade)
+  overNumber           Int
+  ballNumber           Int
+  batsmanName          String
+  bowlerName           String
+  runs                 Int            @default(0)
+  isWide               Boolean        @default(false)
+  isNoBall             Boolean        @default(false)
+  isBye                Boolean        @default(false)
+  isLegBye             Boolean        @default(false)
+  isWicket             Boolean        @default(false)
+  dismissalType        DismissalType?
+  dismissedBatsmanName String?
+  totalRuns            Int            @default(0)
+  createdAt            DateTime       @default(now())
+
+  @@index([inningsId, overNumber])
 }

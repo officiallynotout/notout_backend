@@ -4,8 +4,8 @@ const Joi                        = require('joi')
 const { mongoId, date, time }    = require('../../../../common/validators/shared.validator')
 
 const getSlotSchema = Joi.object({
-  turfId: mongoId.required(),
-  date:   date.required(),
+  boxId: mongoId.required(),
+  date:  date.required(),
 })
 
 const lockSlotSchema = Joi.object({

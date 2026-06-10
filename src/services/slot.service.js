@@ -13,22 +13,30 @@ const _format = (slot) => ({
   _id: slot.id,
 })
 
-const getSlots = async ({ turfId, date }) => {
-  const [turf, slots] = await Promise.all([
-    prisma.turf.findFirst({ where: { id: turfId, isActive: true } }),
-    prisma.slot.findMany({ where: { turfId, date }, orderBy: { startTime: 'asc' } }),
+const getSlots = async ({ boxId, date }) => {
+  const [box, slots] = await Promise.all([
+    prisma.box.findFirst({ where: { id: boxId, isActive: true } }),
+    prisma.slot.findMany({ where: { boxId, date }, orderBy: { startTime: 'asc' } }),
   ])
-  if (!turf) throw new ApiError(404, MESSAGES.TURF.NOT_FOUND)
+  if (!box) throw new ApiError(404, 'Box not found')
 
-  const now = new Date()
+  const now        = new Date()
+  const todayStr   = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const isToday    = date === todayStr
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
 
-  return slots.map((s) => ({
-    ..._format(s),
-    effectiveStatus:
-      s.status === STATUS.SLOT.LOCKED && s.lockedUntil < now
-        ? STATUS.SLOT.AVAILABLE
-        : s.status,
-  }))
+  return slots
+    .filter((s) => {
+      if (!isToday) return true
+      return timeToMinutes(s.startTime) > nowMinutes
+    })
+    .map((s) => ({
+      ..._format(s),
+      effectiveStatus:
+        s.status === STATUS.SLOT.LOCKED && s.lockedUntil < now
+          ? STATUS.SLOT.AVAILABLE
+          : s.status,
+    }))
 }
 
 /**

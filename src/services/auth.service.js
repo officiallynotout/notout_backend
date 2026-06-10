@@ -114,12 +114,21 @@ const verifyOtp = async (phone, otp) => {
 }
 
 const login = async (phone) => {
-  const user = await prisma.user.findUnique({ where: { phoneHash: hashPhone(phone) } })
-  if (!user) throw new ApiError(401, MESSAGES.AUTH.INVALID_CREDS)
+  let user = await prisma.user.findUnique({ where: { phoneHash: hashPhone(phone) } })
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        name:      '',
+        phone:     encryptAES(phone),
+        phoneHash: hashPhone(phone),
+      },
+    })
+  }
 
   const otp = await _setOtp(user.id)
 
-  authDebug('Login OTP for %s -> %s', phone, otp)
+  authDebug('OTP for %s -> %s', phone, otp)
   return _otpResponse(otp)
 }
 

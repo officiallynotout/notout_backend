@@ -41,6 +41,9 @@ app.set('trust proxy', 1)
 // ── Rate limiting ────────────────────────────────────────────────────────────
 app.use(generalLimiter)
 
+// ── Static files ─────────────────────────────────────────────────────────────
+app.use('/turf-images', express.static(path.join(__dirname, '../public/turf-images')))
+
 // ── View engine (EJS for email templates) ───────────────────────────────────
 app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, '../views'))

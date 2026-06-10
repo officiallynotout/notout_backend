@@ -25,6 +25,8 @@ const createTurfSchema = Joi.object({
 
   amenities: Joi.array().items(Joi.string()).optional(),
 
+  images: Joi.array().items(Joi.string().uri()).max(10).optional(),
+
   pricePerHour: Joi.number().min(0).required(),
 
   operatingHours: Joi.object({
@@ -45,6 +47,8 @@ const updateTurfSchema = Joi.object({
   }).optional(),
 
   amenities: Joi.array().items(Joi.string()).optional(),
+
+  images: Joi.array().items(Joi.string().uri()).max(10).optional(),
 
   pricePerHour: Joi.number().min(0).optional(),
 

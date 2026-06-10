@@ -21,6 +21,7 @@ const _format = (turf, distance = null) => ({
       : null,
   },
   amenities:    turf.amenities,
+  images:       turf.images ?? [],
   pricePerHour: turf.pricePerHour,
   operatingHours: {
     open:  turf.openTime,
