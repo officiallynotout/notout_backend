@@ -27,6 +27,7 @@ module.exports = {
   JWT_EXPIRES_IN:         process.env.JWT_EXPIRES_IN,
   CRYPTO_SECRET:          process.env.CRYPTO_SECRET,
   CLIENT_URL:             process.env.CLIENT_URL,
+  REDIS_URL:              process.env.REDIS_URL || 'redis://localhost:6379',
   FIREBASE_PROJECT_ID:    process.env.FIREBASE_PROJECT_ID,
   FIREBASE_CLIENT_EMAIL:  process.env.FIREBASE_CLIENT_EMAIL,
   FIREBASE_PRIVATE_KEY:   process.env.FIREBASE_PRIVATE_KEY,

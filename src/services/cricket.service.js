@@ -6,6 +6,7 @@ const ApiError            = require('../utils/ApiError')
 const MESSAGES            = require('../common/constants/messages.constant')
 const { emitMatchUpdate } = require('../socket')
 const { parsePagination, paginationMeta } = require('../common/helpers/pagination.helper')
+const redisCache          = require('../config/redis')
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -186,20 +187,32 @@ const listMatches = async (userId, query) => {
 }
 
 const getMatch = async (matchId, userId) => {
-  const match = await prisma.cricketMatch.findUnique({
-    where: { id: matchId },
-  })
+  const match = await prisma.cricketMatch.findUnique({ where: { id: matchId } })
   if (!match) throw new ApiError(404, MESSAGES.CRICKET.MATCH_NOT_FOUND)
   if (match.userId !== userId) throw new ApiError(403, MESSAGES.CRICKET.MATCH_FORBIDDEN)
-  return _buildMatchPayload(match)
+
+  const cached = await redisCache.getMatch(matchId)
+  if (cached) return cached
+
+  const payload = await _buildMatchPayload(match)
+  await redisCache.setMatch(matchId, payload)
+  return payload
 }
 
 const getMatchByCode = async (shareCode) => {
   const match = await prisma.cricketMatch.findUnique({
-    where: { shareCode: shareCode.toUpperCase() },
+    where:  { shareCode: shareCode.toUpperCase() },
+    select: { id: true },
   })
   if (!match) throw new ApiError(404, MESSAGES.CRICKET.INVALID_CODE)
-  return _buildMatchPayload(match)
+
+  const cached = await redisCache.getMatch(match.id)
+  if (cached) return cached
+
+  const full    = await prisma.cricketMatch.findUnique({ where: { id: match.id } })
+  const payload = await _buildMatchPayload(full)
+  await redisCache.setMatch(match.id, payload)
+  return payload
 }
 
 const startMatch = async (matchId, userId, { opener1, opener2, bowler }) => {
@@ -226,6 +239,7 @@ const startMatch = async (matchId, userId, { opener1, opener2, bowler }) => {
   ])
 
   const payload = await _buildMatchPayload({ ...match, status: 'IN_PROGRESS' })
+  await redisCache.setMatch(matchId, payload)
   emitMatchUpdate(matchId, payload)
   return payload
 }
@@ -373,6 +387,7 @@ const logBall = async (matchId, userId, ballData) => {
 
   const updatedMatch = await prisma.cricketMatch.findUnique({ where: { id: matchId } })
   const payload = await _buildMatchPayload(updatedMatch)
+  await redisCache.setMatch(matchId, payload)
   emitMatchUpdate(matchId, payload)
   return payload
 }
@@ -402,6 +417,7 @@ const setNextBatsman = async (matchId, userId, { playerName, isOnStrike }) => {
   })
 
   const payload = await _buildMatchPayload(match)
+  await redisCache.setMatch(matchId, payload)
   emitMatchUpdate(matchId, payload)
   return payload
 }
@@ -431,6 +447,7 @@ const setNextBowler = async (matchId, userId, { bowlerName }) => {
   })
 
   const payload = await _buildMatchPayload(match)
+  await redisCache.setMatch(matchId, payload)
   emitMatchUpdate(matchId, payload)
   return payload
 }
@@ -465,6 +482,7 @@ const startInnings2 = async (matchId, userId, { opener1, opener2, bowler }) => {
 
   const updatedMatch = await prisma.cricketMatch.findUnique({ where: { id: matchId } })
   const payload      = await _buildMatchPayload(updatedMatch)
+  await redisCache.setMatch(matchId, { ...payload, target })
   emitMatchUpdate(matchId, { ...payload, target })
   return { ...payload, target }
 }
@@ -511,6 +529,7 @@ const completeMatch = async (matchId, userId) => {
 
   const updatedMatch = await prisma.cricketMatch.findUnique({ where: { id: matchId } })
   const payload      = await _buildMatchPayload(updatedMatch)
+  await redisCache.setMatch(matchId, payload)
   emitMatchUpdate(matchId, payload)
   return payload
 }
