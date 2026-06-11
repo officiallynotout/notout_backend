@@ -33,6 +33,7 @@ module.exports = {
     NOT_LOCKED_BY_YOU: 'Slot not found or not locked by you',
     GENERATED:         'Slots generated successfully',
     PAST_DATE:         'Cannot generate slots for a past date',
+    PAST_SLOT:         'Cannot book a slot that has already passed',
     INVALID_RANGE:     'startTime must be before endTime',
     NO_SLOTS:          'No slots could be generated for the given time range',
   },

@@ -22,6 +22,6 @@ router.post('/refresh',    authLimiter, validate(refreshTokenSchema), controller
 
 // Protected routes (require valid access token)
 router.get('/me', authMiddleware, controller.me)
-router.post('/logout', controller.logout)
+router.post('/logout', authMiddleware, controller.logout)
 
 module.exports = router

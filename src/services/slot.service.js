@@ -5,7 +5,7 @@ const ApiError = require('../utils/ApiError')
 const MESSAGES = require('../common/constants/messages.constant')
 const STATUS   = require('../common/constants/status.constant')
 const { timeToMinutes, minutesToTime, isValidTimeRange } = require('../common/helpers/time.helper')
-const { isFutureOrToday, getLockExpiry }                 = require('../common/helpers/date.helper')
+const { getNowIST, getTodayString, isFutureOrToday, getLockExpiry } = require('../common/helpers/date.helper')
 const { slotDebug }                                      = require('../utils/logger')
 
 const _format = (slot) => ({
@@ -20,10 +20,10 @@ const getSlots = async ({ boxId, date }) => {
   ])
   if (!box) throw new ApiError(404, 'Box not found')
 
-  const now        = new Date()
-  const todayStr   = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const nowIST     = getNowIST()
+  const todayStr   = getTodayString()
   const isToday    = date === todayStr
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = nowIST.getUTCHours() * 60 + nowIST.getUTCMinutes()
 
   return slots
     .filter((s) => {
@@ -33,7 +33,7 @@ const getSlots = async ({ boxId, date }) => {
     .map((s) => ({
       ..._format(s),
       effectiveStatus:
-        s.status === STATUS.SLOT.LOCKED && s.lockedUntil < now
+        s.status === STATUS.SLOT.LOCKED && s.lockedUntil < new Date()
           ? STATUS.SLOT.AVAILABLE
           : s.status,
     }))
@@ -44,6 +44,19 @@ const getSlots = async ({ boxId, date }) => {
  * updateMany with a WHERE condition is a single SQL statement — safe against race conditions.
  */
 const lockSlot = async ({ slotId, userId }) => {
+  const slotToLock = await prisma.slot.findUnique({ where: { id: slotId } })
+  if (!slotToLock) throw new ApiError(404, MESSAGES.SLOT.NOT_FOUND)
+
+  const todayStr   = getTodayString()
+  const nowIST     = getNowIST()
+  const nowMinutes = nowIST.getUTCHours() * 60 + nowIST.getUTCMinutes()
+  if (
+    slotToLock.date < todayStr ||
+    (slotToLock.date === todayStr && timeToMinutes(slotToLock.startTime) <= nowMinutes)
+  ) {
+    throw new ApiError(400, MESSAGES.SLOT.PAST_SLOT)
+  }
+
   const now        = new Date()
   const lockExpiry = getLockExpiry(10)
 
